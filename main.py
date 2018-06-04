@@ -39,8 +39,9 @@ def main():
 
     score_macro = f1_score(y_test, result, average="macro")
     score_micro = f1_score(y_test, result, average="micro")
-    print("F1_macro:{0}, F1_micro:{1}".format(score_macro, score_micro))
+    print("F1_macro:{0}, F1_micro:{1}".format(score_ma`cro, score_micro))
 
 
 if __name__ == '__main__':
+    print("hello world")
     main()
