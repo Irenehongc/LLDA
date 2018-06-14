@@ -90,11 +90,12 @@ class Dataset:
                     vector = model.wv.word_vec(keywords[i][j])
                     # print(type(vector))
                     # sentence_vec.append(vector)
-                    sentence_vec.append(tuple(vector.tolist()))
+                    # sentence_vec.append(tuple(vector.tolist()))
                 except BaseException:
                     pass
                     # print(keywords[i][j])
-            vectors.append(sentence_vec)
+            # vectors.append(sentence_vec)
+            vectors.append(tuple(vector.tolist()))
         return vectors
 
     def get_target(self, type):
@@ -130,9 +131,11 @@ class Dataset:
         self.train_target = train_target
         self.test_target = test_target
 
-#
+
 # model = get_w2vector()
-# vec = model.wv.word_vec("云里雾里")
-# print(vec.shape)
-# print(type(vec))
-# print(tuple(vec.tolist()))
+# dataset = Dataset()
+# keywords = ["云里雾里", "叨叨"]
+# vector = dataset.get_vector(keywords, model)
+# print(len(vector[0]))
+# print(len(vector[1]))
+
