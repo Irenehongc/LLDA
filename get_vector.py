@@ -4,7 +4,14 @@ import re
 import jieba
 import jieba.analyse
 import multiprocessing
-from gensim.models import Word2Vec
+from gensim.models import word2vec
+
+# 严格限制标点符号
+strict_punctuation = '。，、＇：∶；?‘’“”〝〞ˆˇ﹕︰﹔﹖﹑·¨….¸;！´？！～—ˉ｜‖＂〃｀@﹫¡¿﹏﹋﹌︴々﹟#﹩$﹠&﹪%*﹡﹢﹦﹤‐￣¯―﹨ˆ˜﹍﹎+=<­­＿_-\ˇ~﹉﹊（）〈〉‹›﹛﹜『』〖〗［］《》〔〕{}「」【】︵︷︿︹︽_﹁﹃︻︶︸﹀︺︾ˉ﹂﹄︼'
+# 简单限制标点符号
+simple_punctuation = '’!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+# 去除标点符号
+punctuation = simple_punctuation + strict_punctuation
 
 
 def get_content(punctuation):
@@ -34,17 +41,98 @@ def get_w2vector():
     model_text = 'w2v_size_{0}.model'.format(size)
     # w2v训练模型
     sentences = word2vec.Text8Corpus(train_corpus_text)
-    print(sentences)
+    # print(sentences)
     model = word2vec.Word2Vec(sentences=sentences, size=size, window=window, min_count=min_count, workers=workers)
     model.save(model_text)
     return model
 
 
-# 严格限制标点符号
-strict_punctuation = '。，、＇：∶；?‘’“”〝〞ˆˇ﹕︰﹔﹖﹑·¨….¸;！´？！～—ˉ｜‖＂〃｀@﹫¡¿﹏﹋﹌︴々﹟#﹩$﹠&﹪%*﹡﹢﹦﹤‐￣¯―﹨ˆ˜﹍﹎+=<­­＿_-\ˇ~﹉﹊（）〈〉‹›﹛﹜『』〖〗［］《》〔〕{}「」【】︵︷︿︹︽_﹁﹃︻︶︸﹀︺︾ˉ﹂﹄︼'
-# 简单限制标点符号
-simple_punctuation = '’!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
-# 去除标点符号
-punctuation = simple_punctuation + strict_punctuation
-get_content(punctuation)
-model = get_w2vector()
+class Dataset:
+    train_data = None
+    test_data = None
+    train_target = None
+    test_target = None
+
+    def get_keywords(self, type):
+        train_keywords = []
+        with open("movie_info", 'r', encoding="utf-8") as f:
+            i = 0
+            for line in f.readlines():
+                i += 1
+                if type == 'train' and i <= 22500:
+                    line = line.strip()
+                    movie_comment = line.split('\t')
+                    movie_comment = re.sub('[{0}]+'.format(punctuation), '', movie_comment[-2])
+                    keywords = jieba.analyse.extract_tags(movie_comment, topK=20, withWeight=False, allowPOS=())
+                    # print("len(keywords):" + str(len(keywords)))
+                    while len(keywords) < 20:
+                        keywords.append(None)
+                        # print("len(keywords):" + str(len(keywords)))
+                    train_keywords.append(keywords)
+                elif type == 'test' and i > 22500:
+                    line = line.strip()
+                    movie_comment = line.split('\t')
+                    movie_comment = re.sub('[{0}]+'.format(punctuation), '', movie_comment[-2])
+                    keywords = jieba.analyse.extract_tags(movie_comment, topK=20, withWeight=False, allowPOS=())
+                    # print("len(keywords):" + str(len(keywords)))
+                    while len(keywords) < 20:
+                        keywords.append("None")
+                        # print("len(keywords):" + str(len(keywords)))
+                    train_keywords.append(keywords)
+        return train_keywords
+
+    def get_vector(self, keywords, model):
+        vectors = []
+        for i in range(len(keywords)):
+            sentence_vec = []
+            for j in range(len(keywords[i])):
+                try:
+                    vector = model.wv.word_vec(keywords[i][j])
+                    # print(type(vector))
+                    # sentence_vec.append(vector)
+                    sentence_vec.append(tuple(vector.tolist()))
+                except BaseException:
+                    pass
+                    # print(keywords[i][j])
+            vectors.append(sentence_vec)
+        return vectors
+
+    def get_target(self, type):
+        targets = []
+        with open("movie_info", 'r', encoding="utf-8") as f:
+            i = 0
+            for line in f.readlines():
+                i += 1
+                if type == 'train' and i <= 22500:
+                    line = line.strip()
+                    target = line.split('\t')[-1]
+                    targets.append(target)
+                elif type == 'test' and i > 22500:
+                    line = line.strip()
+                    target = line.split('\t')[-1]
+                    targets.append(target)
+        return targets
+
+    def get_dataset(self):
+        get_content(punctuation)
+        model = get_w2vector()
+        train_keywords = self.get_keywords("train")
+        train_movie_vector = self.get_vector(train_keywords, model)
+        # print(train_movie_vector)
+
+        test_keywords = self.get_keywords("test")
+        test_movie_vector = self.get_vector(test_keywords, model)
+
+        train_target = self.get_target("train")
+        test_target = self.get_target("test")
+        self.train_data = train_movie_vector
+        self.test_data = test_movie_vector
+        self.train_target = train_target
+        self.test_target = test_target
+
+#
+# model = get_w2vector()
+# vec = model.wv.word_vec("云里雾里")
+# print(vec.shape)
+# print(type(vec))
+# print(tuple(vec.tolist()))
